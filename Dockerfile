@@ -14,6 +14,7 @@ RUN apt-get update \
 
 WORKDIR /app
 
-COPY --chmod=755 scripts/entrypoint.sh scripts/collector.sh /app/scripts/
+COPY --chown=collector:collector scripts/entrypoint.sh scripts/collector.sh /app/scripts/
+RUN chmod 755 /app/scripts/*.sh
 
 ENTRYPOINT ["/app/scripts/entrypoint.sh"]
