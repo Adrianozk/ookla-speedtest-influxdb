@@ -1,0 +1,17 @@
+services:
+  speedtest-influxdb:
+    image: ghcr.io/adrianozk/ookla-speedtest-influxdb:latest
+    container_name: ookla-speedtest-influxdb
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ:-UTC}
+      OOKLA_EULA_ACCEPTED: ${OOKLA_EULA_ACCEPTED:?Review the Ookla EULA and set this to true}
+
+      INFLUX_URL: ${INFLUX_URL:?Set the InfluxDB URL}
+      INFLUX_ORG: ${INFLUX_ORG:?Set the InfluxDB organization}
+      INFLUX_BUCKET: ${INFLUX_BUCKET:?Set the destination bucket}
+      INFLUX_TOKEN: ${INFLUX_TOKEN:?Set INFLUX_TOKEN in .env}
+
+      SPEEDTEST_SERVER_ID: ${SPEEDTEST_SERVER_ID:-}
+      SPEEDTEST_INTERVAL: ${SPEEDTEST_INTERVAL:-3600}
+      HOST_TAG: ${HOST_TAG:-home-server}

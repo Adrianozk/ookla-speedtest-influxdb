@@ -1,0 +1,41 @@
+{
+  "type": "result",
+  "timestamp": "2026-08-31T08:00:00Z",
+  "ping": {
+    "jitter": 1.25,
+    "latency": 12.5
+  },
+  "download": {
+    "bandwidth": 125000000,
+    "bytes": 500000000,
+    "elapsed": 4000
+  },
+  "upload": {
+    "bandwidth": 62500000,
+    "bytes": 125000000,
+    "elapsed": 2000
+  },
+  "packetLoss": 0,
+  "isp": "Example ISP",
+  "interface": {
+    "internalIp": "192.0.2.10",
+    "name": "eth0",
+    "macAddr": "00:00:5e:00:53:01",
+    "isVpn": false,
+    "externalIp": "198.51.100.10"
+  },
+  "server": {
+    "id": 30306,
+    "host": "speedtest.example.invalid",
+    "port": 8080,
+    "name": "Example Server",
+    "location": "Campinas",
+    "country": "Brazil",
+    "ip": "203.0.113.10"
+  },
+  "result": {
+    "id": "redacted",
+    "url": "https://www.speedtest.net/result/c/redacted",
+    "persisted": true
+  }
+}
