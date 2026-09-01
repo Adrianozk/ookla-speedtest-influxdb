@@ -209,23 +209,7 @@
                       "group": "influxdb",
                       "kind": "DataQuery",
                       "spec": {
-                        "groupBy": [],
-                        "measurement": "speedtest",
-                        "orderByTime": "ASC",
-                        "policy": "default",
-                        "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"speedtest\")\n  |> filter(fn: (r) => r._field == \"packet_loss_pct\")\n  |> filter(fn: (r) => r.host == \"${host}\")\n  |> last()",
-                        "resultFormat": "table",
-                        "select": [
-                          [
-                            {
-                              "params": [
-                                "server_name"
-                              ],
-                              "type": "field"
-                            }
-                          ]
-                        ],
-                        "tags": []
+                        "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"speedtest\")\n  |> filter(fn: (r) => r._field == \"packet_loss_pct\")\n  |> filter(fn: (r) => r.host == \"${host}\")\n  |> last()"
                       },
                       "version": "v0"
                     },
@@ -314,40 +298,7 @@
                       "group": "influxdb",
                       "kind": "DataQuery",
                       "spec": {
-                        "groupBy": [
-                          {
-                            "params": [
-                              "$__interval"
-                            ],
-                            "type": "time"
-                          },
-                          {
-                            "params": [
-                              "linear"
-                            ],
-                            "type": "fill"
-                          }
-                        ],
-                        "measurement": "speedtest",
-                        "orderByTime": "ASC",
-                        "policy": "default",
-                        "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"speedtest\")\n  |> filter(fn: (r) => r._field == \"download_mbps\")\n  |> filter(fn: (r) => r.host == \"${host}\")\n  |> last()",
-                        "resultFormat": "time_series",
-                        "select": [
-                          [
-                            {
-                              "params": [
-                                "download"
-                              ],
-                              "type": "field"
-                            },
-                            {
-                              "params": [],
-                              "type": "last"
-                            }
-                          ]
-                        ],
-                        "tags": []
+                        "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"speedtest\")\n  |> filter(fn: (r) => r._field == \"download_mbps\")\n  |> filter(fn: (r) => r.host == \"${host}\")\n  |> last()"
                       },
                       "version": "v0"
                     },
@@ -431,40 +382,7 @@
                       "group": "influxdb",
                       "kind": "DataQuery",
                       "spec": {
-                        "groupBy": [
-                          {
-                            "params": [
-                              "$__interval"
-                            ],
-                            "type": "time"
-                          },
-                          {
-                            "params": [
-                              "linear"
-                            ],
-                            "type": "fill"
-                          }
-                        ],
-                        "measurement": "speedtest",
-                        "orderByTime": "ASC",
-                        "policy": "default",
-                        "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"speedtest\")\n  |> filter(fn: (r) => r._field == \"upload_mbps\")\n  |> filter(fn: (r) => r.host == \"${host}\")\n  |> last()",
-                        "resultFormat": "time_series",
-                        "select": [
-                          [
-                            {
-                              "params": [
-                                "upload"
-                              ],
-                              "type": "field"
-                            },
-                            {
-                              "params": [],
-                              "type": "last"
-                            }
-                          ]
-                        ],
-                        "tags": []
+                        "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"speedtest\")\n  |> filter(fn: (r) => r._field == \"upload_mbps\")\n  |> filter(fn: (r) => r.host == \"${host}\")\n  |> last()"
                       },
                       "version": "v0"
                     },
@@ -548,40 +466,7 @@
                       "group": "influxdb",
                       "kind": "DataQuery",
                       "spec": {
-                        "groupBy": [
-                          {
-                            "params": [
-                              "$__interval"
-                            ],
-                            "type": "time"
-                          },
-                          {
-                            "params": [
-                              "linear"
-                            ],
-                            "type": "fill"
-                          }
-                        ],
-                        "measurement": "speedtest",
-                        "orderByTime": "ASC",
-                        "policy": "default",
-                        "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"speedtest\")\n  |> filter(fn: (r) => r._field == \"latency_ms\")\n  |> filter(fn: (r) => r.host == \"${host}\")\n  |> last()",
-                        "resultFormat": "time_series",
-                        "select": [
-                          [
-                            {
-                              "params": [
-                                "ping"
-                              ],
-                              "type": "field"
-                            },
-                            {
-                              "params": [],
-                              "type": "last"
-                            }
-                          ]
-                        ],
-                        "tags": []
+                        "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"speedtest\")\n  |> filter(fn: (r) => r._field == \"latency_ms\")\n  |> filter(fn: (r) => r.host == \"${host}\")\n  |> last()"
                       },
                       "version": "v0"
                     },
