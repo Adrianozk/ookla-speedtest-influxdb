@@ -306,9 +306,7 @@
                   }
                 }
               ],
-              "queryOptions": {
-                "timeFrom": "2d"
-              },
+              "queryOptions": {},
               "transformations": []
             }
           },
@@ -390,9 +388,7 @@
                   }
                 }
               ],
-              "queryOptions": {
-                "timeFrom": "2d"
-              },
+              "queryOptions": {},
               "transformations": []
             }
           },
@@ -474,9 +470,7 @@
                   }
                 }
               ],
-              "queryOptions": {
-                "timeFrom": "2d"
-              },
+              "queryOptions": {},
               "transformations": []
             }
           },
