@@ -126,6 +126,30 @@ from(bucket: "speedtests")
   |> filter(fn: (r) => r._field == "download_mbps" or r._field == "upload_mbps")
 ```
 
+## Grafana dashboard
+
+A ready-to-import dashboard is available at
+[`grafana/dashboard.json`](grafana/dashboard.json). It targets Grafana's
+dashboard schema v2 and an InfluxDB 2 data source configured to use Flux.
+
+The dashboard includes:
+
+- latest download, upload, latency, and packet loss
+- download and upload history
+- latency, jitter, and packet-loss history
+- a table with the 100 most recent tests in the selected time range
+
+To import it:
+
+1. In Grafana, open **Dashboards > New > Import**.
+2. Upload `grafana/dashboard.json`.
+3. Select the InfluxDB data source in the **InfluxDB** dashboard variable.
+4. Set **Bucket** to the value of `INFLUX_BUCKET` and **Host** to the value
+   of `HOST_TAG`.
+
+The dashboard contains no InfluxDB URL, organization, or token. Those remain
+in the Grafana data-source configuration.
+
 ## Logs
 
 ```text
