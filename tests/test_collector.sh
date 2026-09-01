@@ -8,9 +8,10 @@ trap 'rm -rf "$TEST_ROOT"' EXIT
 
 mkdir -p "$TEST_ROOT/bin"
 
-cat >"$TEST_ROOT/bin/speedtest" <<EOF
+cat >"$TEST_ROOT/bin/speedtest" <<'EOF'
 #!/bin/sh
-cat "$PROJECT_ROOT/tests/fixtures/speedtest-result.json"
+printf '%s\n' "$@" >"$SPEEDTEST_ARGS_FILE"
+cat "$SPEEDTEST_FIXTURE"
 EOF
 
 cat >"$TEST_ROOT/bin/curl" <<'EOF'
@@ -30,6 +31,8 @@ chmod +x "$TEST_ROOT/bin/speedtest" "$TEST_ROOT/bin/curl"
 
 export PATH="$TEST_ROOT/bin:$PATH"
 export CAPTURE_FILE="$TEST_ROOT/line-protocol.txt"
+export SPEEDTEST_ARGS_FILE="$TEST_ROOT/speedtest-args.txt"
+export SPEEDTEST_FIXTURE="$PROJECT_ROOT/tests/fixtures/speedtest-result.json"
 export INFLUX_URL="http://influxdb:8086"
 export INFLUX_ORG="example-org"
 export INFLUX_BUCKET="speedtests"
@@ -39,6 +42,16 @@ export HOST_TAG="cerberus"
 export RUN_ONCE="true"
 
 "$PROJECT_ROOT/scripts/collector.sh"
+
+grep -Fx -- '--server-id=30306' "$SPEEDTEST_ARGS_FILE" >/dev/null
+
+unset SPEEDTEST_SERVER_ID
+"$PROJECT_ROOT/scripts/collector.sh"
+
+if grep -E '^--server-id=' "$SPEEDTEST_ARGS_FILE" >/dev/null; then
+    echo 'Automatic server selection unexpectedly passed --server-id' >&2
+    exit 1
+fi
 
 line="$(cat "$CAPTURE_FILE")"
 

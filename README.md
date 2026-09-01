@@ -88,6 +88,21 @@ container installs it again.
 Use a dedicated InfluxDB token limited to write access on the destination
 bucket. Do not put a real token directly in `compose.yml`.
 
+## Server selection
+
+Set `SPEEDTEST_SERVER_ID` to pin every test to one Ookla server. This is the
+best option when consistent trend comparisons matter.
+
+Leave `SPEEDTEST_SERVER_ID` empty, or omit it, to use automatic selection. In
+this mode the collector does not pass `--server-id`; the official Ookla CLI
+chooses the server for each run. Automatic selection is not uniformly random,
+so the same server may be selected repeatedly.
+
+In both modes, the server actually used is read from the CLI JSON result and
+stored with every point as the `server_id`, `server_name`, `server_location`,
+and `server_country` tags. This keeps results traceable and allows the Grafana
+dashboard to compare servers even when automatic selection changes them.
+
 ## Data model
 
 The collector writes one point per test to the `speedtest` measurement.
@@ -137,6 +152,7 @@ The dashboard includes:
 - latest download, upload, latency, and packet loss
 - download and upload history
 - latency, jitter, and packet-loss history
+- minimum, average, and maximum results grouped by Ookla server
 - a table with the 100 most recent tests in the selected time range
 
 To import it:
@@ -163,8 +179,8 @@ Tokens are never included in collector logs.
 
 ## Development
 
-Run the parser and write-path test without making a real Speedtest or InfluxDB
-request:
+Run the parser, server-selection, and write-path tests without making a real
+Speedtest or InfluxDB request:
 
 ```bash
 bash tests/test_collector.sh

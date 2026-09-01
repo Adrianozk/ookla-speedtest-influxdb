@@ -32,7 +32,7 @@
       }
     ],
     "cursorSync": "Off",
-    "description": "Dashboard for network performance results collected by Adrianozk/ookla-speedtest-influxdb.",
+    "description": "Dashboard for network performance results collected by Adrianozk/ookla-speedtest-influxdb, including per-server analysis.",
     "editable": true,
     "elements": {
       "panel-104": {
@@ -144,7 +144,7 @@
                       },
                       {
                         "id": "displayName",
-                        "value": "Download"
+                        "value": "Download · ${__field.labels.server_name} (${__field.labels.server_id})"
                       }
                     ]
                   },
@@ -163,7 +163,7 @@
                       },
                       {
                         "id": "displayName",
-                        "value": "Upload"
+                        "value": "Upload · ${__field.labels.server_name} (${__field.labels.server_id})"
                       }
                     ]
                   }
@@ -209,7 +209,7 @@
                       "group": "influxdb",
                       "kind": "DataQuery",
                       "spec": {
-                        "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"speedtest\")\n  |> filter(fn: (r) => r._field == \"packet_loss_pct\")\n  |> filter(fn: (r) => r.host == \"${host}\")\n  |> last()"
+                        "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"speedtest\")\n  |> filter(fn: (r) => r._field == \"packet_loss_pct\")\n  |> filter(fn: (r) => r.host == \"${host}\")\n  |> last()\n  |> group()\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: 1)"
                       },
                       "version": "v0"
                     },
@@ -298,7 +298,7 @@
                       "group": "influxdb",
                       "kind": "DataQuery",
                       "spec": {
-                        "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"speedtest\")\n  |> filter(fn: (r) => r._field == \"download_mbps\")\n  |> filter(fn: (r) => r.host == \"${host}\")\n  |> last()"
+                        "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"speedtest\")\n  |> filter(fn: (r) => r._field == \"download_mbps\")\n  |> filter(fn: (r) => r.host == \"${host}\")\n  |> last()\n  |> group()\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: 1)"
                       },
                       "version": "v0"
                     },
@@ -382,7 +382,7 @@
                       "group": "influxdb",
                       "kind": "DataQuery",
                       "spec": {
-                        "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"speedtest\")\n  |> filter(fn: (r) => r._field == \"upload_mbps\")\n  |> filter(fn: (r) => r.host == \"${host}\")\n  |> last()"
+                        "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"speedtest\")\n  |> filter(fn: (r) => r._field == \"upload_mbps\")\n  |> filter(fn: (r) => r.host == \"${host}\")\n  |> last()\n  |> group()\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: 1)"
                       },
                       "version": "v0"
                     },
@@ -466,7 +466,7 @@
                       "group": "influxdb",
                       "kind": "DataQuery",
                       "spec": {
-                        "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"speedtest\")\n  |> filter(fn: (r) => r._field == \"latency_ms\")\n  |> filter(fn: (r) => r.host == \"${host}\")\n  |> last()"
+                        "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"speedtest\")\n  |> filter(fn: (r) => r._field == \"latency_ms\")\n  |> filter(fn: (r) => r.host == \"${host}\")\n  |> last()\n  |> group()\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: 1)"
                       },
                       "version": "v0"
                     },
@@ -651,7 +651,7 @@
                       },
                       {
                         "id": "displayName",
-                        "value": "Latency"
+                        "value": "Latency · ${__field.labels.server_name} (${__field.labels.server_id})"
                       }
                     ]
                   },
@@ -670,7 +670,7 @@
                       },
                       {
                         "id": "displayName",
-                        "value": "Jitter"
+                        "value": "Jitter · ${__field.labels.server_name} (${__field.labels.server_id})"
                       }
                     ]
                   },
@@ -689,7 +689,7 @@
                       },
                       {
                         "id": "displayName",
-                        "value": "Packet loss"
+                        "value": "Packet loss · ${__field.labels.server_name} (${__field.labels.server_id})"
                       },
                       {
                         "id": "unit",
@@ -743,7 +743,7 @@
                       "group": "influxdb",
                       "kind": "DataQuery",
                       "spec": {
-                        "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"speedtest\")\n  |> filter(fn: (r) => r.host == \"${host}\")\n  |> filter(fn: (r) => r._field == \"download_mbps\" or r._field == \"upload_mbps\" or r._field == \"latency_ms\" or r._field == \"jitter_ms\" or r._field == \"packet_loss_pct\")\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> keep(columns: [\"_time\", \"download_mbps\", \"upload_mbps\", \"latency_ms\", \"jitter_ms\", \"packet_loss_pct\", \"server_name\", \"server_location\", \"server_country\", \"server_id\", \"isp\", \"interface\"])\n  |> rename(columns: {_time: \"Time\", download_mbps: \"Download\", upload_mbps: \"Upload\", latency_ms: \"Latency\", jitter_ms: \"Jitter\", packet_loss_pct: \"Packet loss\", server_name: \"Server\", server_location: \"Location\", server_country: \"Country\", server_id: \"Server ID\", isp: \"ISP\", interface: \"Interface\"})\n  |> sort(columns: [\"Time\"], desc: true)\n  |> limit(n: 100)"
+                        "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"speedtest\")\n  |> filter(fn: (r) => r.host == \"${host}\")\n  |> filter(fn: (r) => r._field == \"download_mbps\" or r._field == \"upload_mbps\" or r._field == \"latency_ms\" or r._field == \"jitter_ms\" or r._field == \"packet_loss_pct\")\n  |> group()\n  |> pivot(rowKey: [\"_time\", \"server_id\", \"server_name\", \"server_location\", \"server_country\", \"isp\", \"interface\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> keep(columns: [\"_time\", \"download_mbps\", \"upload_mbps\", \"latency_ms\", \"jitter_ms\", \"packet_loss_pct\", \"server_name\", \"server_location\", \"server_country\", \"server_id\", \"isp\", \"interface\"])\n  |> rename(columns: {_time: \"Time\", download_mbps: \"Download\", upload_mbps: \"Upload\", latency_ms: \"Latency\", jitter_ms: \"Jitter\", packet_loss_pct: \"Packet loss\", server_name: \"Server\", server_location: \"Location\", server_country: \"Country\", server_id: \"Server ID\", isp: \"ISP\", interface: \"Interface\"})\n  |> sort(columns: [\"Time\"], desc: true)\n  |> limit(n: 100)"
                       },
                       "version": "v0"
                     },
@@ -755,7 +755,7 @@
               "transformations": []
             }
           },
-          "description": "Most recent tests in the selected time range, newest first.",
+          "description": "Most recent tests in the selected time range, newest first, including the server selected by Ookla.",
           "id": 121,
           "links": [],
           "title": "Recent tests",
@@ -883,6 +883,145 @@
             "version": "13.2.0"
           }
         }
+      },
+      "panel-122": {
+        "kind": "Panel",
+        "spec": {
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "hidden": false,
+                    "query": {
+                      "datasource": {
+                        "name": "${datasource}"
+                      },
+                      "group": "influxdb",
+                      "kind": "DataQuery",
+                      "spec": {
+                        "query": "base = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"speedtest\")\n  |> filter(fn: (r) => r.host == \"${host}\")\n  |> filter(fn: (r) => r._field == \"download_mbps\" or r._field == \"upload_mbps\" or r._field == \"latency_ms\")\n  |> group(columns: [\"server_id\", \"server_name\", \"server_location\", \"server_country\", \"_field\"])\n\nminimum = base\n  |> min()\n  |> map(fn: (r) => ({r with metric: r._field + \"_min\"}))\n\naverage = base\n  |> mean()\n  |> map(fn: (r) => ({r with metric: r._field + \"_avg\"}))\n\nmaximum = base\n  |> max()\n  |> map(fn: (r) => ({r with metric: r._field + \"_max\"}))\n\ntests = base\n  |> filter(fn: (r) => r._field == \"download_mbps\")\n  |> count(column: \"_value\")\n  |> map(fn: (r) => ({r with _value: float(v: r._value), metric: \"tests\"}))\n\nunion(tables: [minimum, average, maximum, tests])\n  |> group()\n  |> pivot(rowKey: [\"server_id\", \"server_name\", \"server_location\", \"server_country\"], columnKey: [\"metric\"], valueColumn: \"_value\")\n  |> keep(columns: [\"server_name\", \"server_id\", \"server_location\", \"server_country\", \"tests\", \"download_mbps_min\", \"download_mbps_avg\", \"download_mbps_max\", \"upload_mbps_min\", \"upload_mbps_avg\", \"upload_mbps_max\", \"latency_ms_min\", \"latency_ms_avg\", \"latency_ms_max\"])\n  |> rename(columns: {server_name: \"Server\", server_id: \"Server ID\", server_location: \"Location\", server_country: \"Country\", tests: \"Tests\", download_mbps_min: \"Download min\", download_mbps_avg: \"Download avg\", download_mbps_max: \"Download max\", upload_mbps_min: \"Upload min\", upload_mbps_avg: \"Upload avg\", upload_mbps_max: \"Upload max\", latency_ms_min: \"Latency min\", latency_ms_avg: \"Latency avg\", latency_ms_max: \"Latency max\"})\n  |> sort(columns: [\"Server\"])"
+                      },
+                      "version": "v0"
+                    },
+                    "refId": "A"
+                  }
+                }
+              ],
+              "queryOptions": {},
+              "transformations": []
+            }
+          },
+          "description": "Minimum, average, and maximum results grouped by the Ookla server actually used during the selected time range.",
+          "id": 122,
+          "links": [],
+          "title": "Results by Ookla server",
+          "vizConfig": {
+            "group": "table",
+            "kind": "VizConfig",
+            "spec": {
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "custom": {
+                    "align": "auto",
+                    "cellOptions": {
+                      "type": "auto"
+                    },
+                    "filterable": true,
+                    "inspect": false
+                  },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": 0
+                      }
+                    ]
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byRegexp",
+                      "options": "^Download"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "Mbits"
+                      },
+                      {
+                        "id": "decimals",
+                        "value": 1
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byRegexp",
+                      "options": "^Upload"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "Mbits"
+                      },
+                      {
+                        "id": "decimals",
+                        "value": 1
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byRegexp",
+                      "options": "^Latency"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "ms"
+                      },
+                      {
+                        "id": "decimals",
+                        "value": 1
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Tests"
+                    },
+                    "properties": [
+                      {
+                        "id": "decimals",
+                        "value": 0
+                      }
+                    ]
+                  }
+                ]
+              },
+              "options": {
+                "cellHeight": "sm",
+                "showHeader": true,
+                "sortBy": [
+                  {
+                    "desc": false,
+                    "displayName": "Server"
+                  }
+                ]
+              }
+            },
+            "version": "13.2.0"
+          }
+        }
       }
     },
     "layout": {
@@ -980,12 +1119,25 @@
                       "spec": {
                         "element": {
                           "kind": "ElementReference",
+                          "name": "panel-122"
+                        },
+                        "height": 10,
+                        "width": 24,
+                        "x": 0,
+                        "y": 24
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
                           "name": "panel-121"
                         },
                         "height": 11,
                         "width": 24,
                         "x": 0,
-                        "y": 24
+                        "y": 34
                       }
                     }
                   ]
