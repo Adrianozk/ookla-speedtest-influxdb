@@ -53,7 +53,7 @@
                       "group": "influxdb",
                       "kind": "DataQuery",
                       "spec": {
-                        "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"speedtest\")\n  |> filter(fn: (r) => r._field == \"download_mbps\" or r._field == \"upload_mbps\")\n  |> filter(fn: (r) => r.host == \"${host}\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)"
+                        "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"speedtest\")\n  |> filter(fn: (r) => r._field == \"download_mbps\" or r._field == \"upload_mbps\")\n  |> filter(fn: (r) => r.host == \"${host}\")\n  |> group(columns: [\"_field\"])\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)"
                       },
                       "version": "v0"
                     },
@@ -144,7 +144,7 @@
                       },
                       {
                         "id": "displayName",
-                        "value": "Download · ${__field.labels.server_name} (${__field.labels.server_id})"
+                        "value": "Download"
                       }
                     ]
                   },
@@ -163,7 +163,7 @@
                       },
                       {
                         "id": "displayName",
-                        "value": "Upload · ${__field.labels.server_name} (${__field.labels.server_id})"
+                        "value": "Upload"
                       }
                     ]
                   }
@@ -550,7 +550,7 @@
                       "group": "influxdb",
                       "kind": "DataQuery",
                       "spec": {
-                        "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"speedtest\")\n  |> filter(fn: (r) => r._field == \"latency_ms\" or r._field == \"jitter_ms\" or r._field == \"packet_loss_pct\")\n  |> filter(fn: (r) => r.host == \"${host}\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)"
+                        "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"speedtest\")\n  |> filter(fn: (r) => r._field == \"latency_ms\" or r._field == \"jitter_ms\" or r._field == \"packet_loss_pct\")\n  |> filter(fn: (r) => r.host == \"${host}\")\n  |> group(columns: [\"_field\"])\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)"
                       },
                       "version": "v0"
                     },
@@ -645,7 +645,7 @@
                       },
                       {
                         "id": "displayName",
-                        "value": "Latency · ${__field.labels.server_name} (${__field.labels.server_id})"
+                        "value": "Latency"
                       }
                     ]
                   },
@@ -664,7 +664,7 @@
                       },
                       {
                         "id": "displayName",
-                        "value": "Jitter · ${__field.labels.server_name} (${__field.labels.server_id})"
+                        "value": "Jitter"
                       }
                     ]
                   },
@@ -683,7 +683,7 @@
                       },
                       {
                         "id": "displayName",
-                        "value": "Packet loss · ${__field.labels.server_name} (${__field.labels.server_id})"
+                        "value": "Packet loss (right y-axis)"
                       },
                       {
                         "id": "unit",
