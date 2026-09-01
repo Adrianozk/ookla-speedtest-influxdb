@@ -89,6 +89,23 @@ container faz uma nova instalação.
 Utilize um token dedicado, limitado à escrita no bucket escolhido. Não coloque
 um token verdadeiro diretamente no arquivo Compose.
 
+## Seleção do servidor
+
+Defina `SPEEDTEST_SERVER_ID` para fixar todos os testes em um servidor Ookla.
+Essa é a melhor opção quando a consistência da comparação histórica é mais
+importante.
+
+Deixe `SPEEDTEST_SERVER_ID` vazio, ou remova a variável, para usar a seleção
+automática. Nesse modo o coletor não envia `--server-id`; o CLI oficial do
+Ookla escolhe o servidor em cada execução. A seleção automática não é
+uniformemente aleatória, portanto o mesmo servidor pode ser escolhido várias
+vezes.
+
+Nos dois modos, o servidor realmente utilizado é lido do JSON do CLI e salvo
+em cada ponto nas tags `server_id`, `server_name`, `server_location` e
+`server_country`. Assim os resultados continuam rastreáveis e o dashboard do
+Grafana consegue comparar servidores mesmo quando a seleção automática muda.
+
 ## Modelo dos dados
 
 Cada teste gera um ponto na measurement `speedtest`.
@@ -127,6 +144,31 @@ from(bucket: "speedtests")
   |> filter(fn: (r) => r._field == "download_mbps" or r._field == "upload_mbps")
 ```
 
+## Dashboard do Grafana
+
+Um dashboard pronto para importação está disponível em
+[`grafana/dashboard.json`](../grafana/dashboard.json). Ele usa o schema v2 de
+dashboards do Grafana e uma fonte de dados InfluxDB 2 configurada para Flux.
+
+O dashboard mostra:
+
+- download, upload, latência e perda de pacotes mais recentes
+- histórico de download e upload
+- histórico de latência, jitter e perda de pacotes
+- resultados mínimos, médios e máximos agrupados por servidor Ookla
+- tabela com os 100 testes mais recentes dentro do período selecionado
+
+Para importar:
+
+1. No Grafana, abra **Dashboards > New > Import**.
+2. Envie o arquivo `grafana/dashboard.json`.
+3. Selecione a fonte InfluxDB na variável **InfluxDB** do dashboard.
+4. Defina **Bucket** com o valor de `INFLUX_BUCKET` e **Host** com o valor de
+   `HOST_TAG`.
+
+O dashboard não contém URL, organização ou token do InfluxDB. Esses dados
+continuam apenas na configuração da fonte de dados do Grafana.
+
 ## Logs
 
 ```text
@@ -140,8 +182,8 @@ O token nunca é incluído nos logs do coletor.
 
 ## Desenvolvimento
 
-Teste o parser e o caminho de escrita sem executar um Speedtest real ou
-acessar o InfluxDB:
+Teste o parser, a seleção de servidor e o caminho de escrita sem executar um
+Speedtest real ou acessar o InfluxDB:
 
 ```bash
 bash tests/test_collector.sh
