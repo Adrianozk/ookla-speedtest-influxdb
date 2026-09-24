@@ -201,3 +201,9 @@ O código-fonte deste repositório usa a licença MIT. Speedtest, Speedtest by
 Ookla e o logotipo Speedtest são marcas do Ookla, LLC. O CLI proprietário é
 baixado separadamente e permanece sujeito à licença e aos termos do Ookla.
 Este projeto não possui afiliação nem endosso do Ookla.
+
+## Status das coletas e histórico
+
+Cada teste concluído agora grava um ponto separado em `${MEASUREMENT}_status`, incluindo falhas. As métricas de velocidade são preservadas. Consulte o [guia de status e importação de logs](status-history.pt-BR.md) para importar o histórico e usar os novos campos no Grafana.
+
+O [dashboard pronto para importar](../grafana/dashboard.json) agora inclui status das coletas, detalhes dos erros, idade da medição e lacunas visíveis. Configure **Max data age (seconds)** como `1200` para testes a cada 15 minutos ou `4500` para testes a cada hora. O [guia original em inglês](status-history.md) documenta o mesmo procedimento.

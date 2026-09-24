@@ -199,3 +199,9 @@ Speedtest, Speedtest by Ookla, and the Speedtest logo are trademarks of Ookla,
 LLC. The proprietary Ookla CLI is downloaded separately and remains subject to
 Ookla's own license and terms. This project is not affiliated with or endorsed
 by Ookla.
+
+## Collection status and historical logs
+
+Each completed test now writes a separate `${MEASUREMENT}_status` point, including failures. Speed measurements remain unchanged. See the [status schema and log import guide](docs/status-history.md) for the safe preview/import workflow and Grafana field mapping.
+
+The [importable dashboard](grafana/dashboard.json) now includes collection status, error details, measurement age, and visible gaps. Set **Max data age (seconds)** to `1200` for 15-minute tests or `4500` for hourly tests. The [Portuguese guide](docs/status-history.pt-BR.md) documents the same workflow.
