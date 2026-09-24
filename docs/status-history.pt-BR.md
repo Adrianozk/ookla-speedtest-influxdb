@@ -119,3 +119,5 @@ incidentes antigos. As consultas usam apenas dados dentro desse período. Para
 períodos muito longos/coletas frequentes, reduza o intervalo exibido: os históricos
 não agregam pontos para evitar esconder falhas curtas. Importe os logs antigos
 antes de visualizar os painéis de status. Não é necessário esperar o merge.
+
+Os três painéis de status ficam em **Collection status**, recolhida por padrão. **Recent tests** reúne medições bem-sucedidas e tentativas com erro (Status/Reason), em ordem decrescente de horário, sem inventar velocidades nem duplicar sucessos. Os detalhes completos continuam na tabela separada.

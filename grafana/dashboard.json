@@ -737,7 +737,7 @@
                       "group": "influxdb",
                       "kind": "DataQuery",
                       "spec": {
-                        "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"${measurement}\")\n  |> filter(fn: (r) => r.host == \"${host}\")\n  |> filter(fn: (r) => r._field == \"download_mbps\" or r._field == \"upload_mbps\" or r._field == \"latency_ms\" or r._field == \"jitter_ms\" or r._field == \"packet_loss_pct\")\n  |> group()\n  |> pivot(rowKey: [\"_time\", \"server_id\", \"server_name\", \"server_location\", \"server_country\", \"isp\", \"interface\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> keep(columns: [\"_time\", \"download_mbps\", \"upload_mbps\", \"latency_ms\", \"jitter_ms\", \"packet_loss_pct\", \"server_name\", \"server_location\", \"server_country\", \"server_id\", \"isp\", \"interface\"])\n  |> rename(columns: {_time: \"Time\", download_mbps: \"Download\", upload_mbps: \"Upload\", latency_ms: \"Latency\", jitter_ms: \"Jitter\", packet_loss_pct: \"Packet loss\", server_name: \"Server\", server_location: \"Location\", server_country: \"Country\", server_id: \"Server ID\", isp: \"ISP\", interface: \"Interface\"})\n  |> sort(columns: [\"Time\"], desc: true)\n  |> limit(n: 100)"
+                        "query": "import \"internal/debug\"\n\nsucceeded = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"${measurement}\")\n  |> filter(fn: (r) => r.host == \"${host}\")\n  |> filter(fn: (r) => r._field == \"download_mbps\" or r._field == \"upload_mbps\" or r._field == \"latency_ms\" or r._field == \"jitter_ms\" or r._field == \"packet_loss_pct\")\n  |> group()\n  |> pivot(rowKey: [\"_time\", \"server_id\", \"server_name\", \"server_location\", \"server_country\", \"isp\", \"interface\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> keep(columns: [\"_time\", \"download_mbps\", \"upload_mbps\", \"latency_ms\", \"jitter_ms\", \"packet_loss_pct\", \"server_name\", \"server_location\", \"server_country\", \"server_id\", \"isp\", \"interface\"])\n  |> rename(columns: {_time: \"Time\", download_mbps: \"Download\", upload_mbps: \"Upload\", latency_ms: \"Latency\", jitter_ms: \"Jitter\", packet_loss_pct: \"Packet loss\", server_name: \"Server\", server_location: \"Location\", server_country: \"Country\", server_id: \"Server ID\", isp: \"ISP\", interface: \"Interface\"})\n  |> map(fn: (r) => ({Time: r.Time, Status: \"Succeeded\", Reason: \"\", \"Download\": if exists r[\"Download\"] then float(v: r[\"Download\"]) else debug.null(type: \"float\"), \"Upload\": if exists r[\"Upload\"] then float(v: r[\"Upload\"]) else debug.null(type: \"float\"), \"Latency\": if exists r[\"Latency\"] then float(v: r[\"Latency\"]) else debug.null(type: \"float\"), \"Jitter\": if exists r[\"Jitter\"] then float(v: r[\"Jitter\"]) else debug.null(type: \"float\"), \"Packet loss\": if exists r[\"Packet loss\"] then float(v: r[\"Packet loss\"]) else debug.null(type: \"float\"), \"Server\": if exists r[\"Server\"] then string(v: r[\"Server\"]) else \"\", \"Location\": if exists r[\"Location\"] then string(v: r[\"Location\"]) else \"\", \"Country\": if exists r[\"Country\"] then string(v: r[\"Country\"]) else \"\", \"Server ID\": if exists r[\"Server ID\"] then string(v: r[\"Server ID\"]) else \"\", \"ISP\": if exists r[\"ISP\"] then string(v: r[\"ISP\"]) else \"\", \"Interface\": if exists r[\"Interface\"] then string(v: r[\"Interface\"]) else \"\"}))\n\nfailed = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"${measurement}_status\" and r.host == \"${host}\")\n  |> filter(fn: (r) => r._field == \"success\" or r._field == \"error_kind\" or r._field == \"server_id\")\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> filter(fn: (r) => r.success == 0)\n  |> map(fn: (r) => ({Time: r._time, Status: \"Failed\", Reason: if exists r.error_kind then r.error_kind else \"unknown\",\n\"Download\": debug.null(type: \"float\"), \"Upload\": debug.null(type: \"float\"), \"Latency\": debug.null(type: \"float\"), \"Jitter\": debug.null(type: \"float\"), \"Packet loss\": debug.null(type: \"float\"), \"Server\": \"\", \"Location\": \"\", \"Country\": \"\", \"Server ID\": if exists r.server_id then r.server_id else \"unknown\", \"ISP\": \"\", \"Interface\": \"\"}))\n\nunion(tables: [succeeded, failed])\n  |> group()\n  |> sort(columns: [\"Time\"], desc: true)\n  |> limit(n: 100)"
                       },
                       "version": "v0"
                     },
@@ -749,7 +749,7 @@
               "transformations": []
             }
           },
-          "description": "Most recent tests in the selected time range, newest first, including the server selected by Ookla.",
+          "description": "100 most recent completed tests, including failed attempts. Failed tests have no speed measurements; Server ID is the requested server for failures. Detailed errors are below. Successful status records are not duplicated.",
           "id": 121,
           "links": [],
           "title": "Recent tests",
@@ -778,7 +778,8 @@
                         "value": 0
                       }
                     ]
-                  }
+                  },
+                  "noValue": "\u2014"
                 },
                 "overrides": [
                   {
@@ -858,6 +859,38 @@
                       {
                         "id": "decimals",
                         "value": 1
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Status"
+                    },
+                    "properties": [
+                      {
+                        "id": "mappings",
+                        "value": [
+                          {
+                            "type": "value",
+                            "options": {
+                              "Failed": {
+                                "text": "Failed",
+                                "color": "red"
+                              },
+                              "Succeeded": {
+                                "text": "Succeeded",
+                                "color": "green"
+                              }
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "id": "custom.cellOptions",
+                        "value": {
+                          "type": "color-text"
+                        }
                       }
                     ]
                   }
@@ -1197,7 +1230,7 @@
                       "group": "influxdb",
                       "kind": "DataQuery",
                       "spec": {
-                        "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"${measurement}_status\" and r.host == \"${host}\")\n  |> filter(fn: (r) => r._field == \"success\")\n  |> keep(columns: [\"_time\", \"_value\"])\n  |> group()\n  |> sort(columns: [\"_time\"])"
+                        "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"${measurement}_status\" and r.host == \"${host}\")\n  |> filter(fn: (r) => r._field == \"success\")\n  |> keep(columns: [\"_time\", \"_value\"])\n  |> map(fn: (r) => ({r with _field: if r._value == 0 then \"Failed\" else \"Succeeded\"}))\n  |> group(columns: [\"_field\"])\n  |> sort(columns: [\"_time\"])"
                       },
                       "version": "v0"
                     },
@@ -1287,7 +1320,38 @@
                     }
                   ]
                 },
-                "overrides": []
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byRegexp",
+                      "options": ".*Failed.*"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "red"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byRegexp",
+                      "options": ".*Succeeded.*"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "green"
+                        }
+                      }
+                    ]
+                  }
+                ]
               },
               "options": {
                 "legend": {
@@ -1397,115 +1461,12 @@
           {
             "kind": "RowsLayoutRow",
             "spec": {
-              "collapse": false,
+              "title": "Collection status",
+              "collapse": true,
               "layout": {
                 "kind": "GridLayout",
                 "spec": {
                   "items": [
-                    {
-                      "kind": "GridLayoutItem",
-                      "spec": {
-                        "element": {
-                          "kind": "ElementReference",
-                          "name": "panel-116"
-                        },
-                        "height": 5,
-                        "width": 6,
-                        "x": 0,
-                        "y": 10
-                      }
-                    },
-                    {
-                      "kind": "GridLayoutItem",
-                      "spec": {
-                        "element": {
-                          "kind": "ElementReference",
-                          "name": "panel-117"
-                        },
-                        "height": 5,
-                        "width": 6,
-                        "x": 6,
-                        "y": 10
-                      }
-                    },
-                    {
-                      "kind": "GridLayoutItem",
-                      "spec": {
-                        "element": {
-                          "kind": "ElementReference",
-                          "name": "panel-118"
-                        },
-                        "height": 5,
-                        "width": 6,
-                        "x": 12,
-                        "y": 10
-                      }
-                    },
-                    {
-                      "kind": "GridLayoutItem",
-                      "spec": {
-                        "element": {
-                          "kind": "ElementReference",
-                          "name": "panel-114"
-                        },
-                        "height": 5,
-                        "width": 6,
-                        "x": 18,
-                        "y": 10
-                      }
-                    },
-                    {
-                      "kind": "GridLayoutItem",
-                      "spec": {
-                        "element": {
-                          "kind": "ElementReference",
-                          "name": "panel-104"
-                        },
-                        "height": 10,
-                        "width": 24,
-                        "x": 0,
-                        "y": 15
-                      }
-                    },
-                    {
-                      "kind": "GridLayoutItem",
-                      "spec": {
-                        "element": {
-                          "kind": "ElementReference",
-                          "name": "panel-119"
-                        },
-                        "height": 9,
-                        "width": 24,
-                        "x": 0,
-                        "y": 25
-                      }
-                    },
-                    {
-                      "kind": "GridLayoutItem",
-                      "spec": {
-                        "element": {
-                          "kind": "ElementReference",
-                          "name": "panel-122"
-                        },
-                        "height": 10,
-                        "width": 24,
-                        "x": 0,
-                        "y": 34
-                      }
-                    },
-                    {
-                      "kind": "GridLayoutItem",
-                      "spec": {
-                        "element": {
-                          "kind": "ElementReference",
-                          "name": "panel-121"
-                        },
-                        "height": 11,
-                        "width": 24,
-                        "x": 0,
-                        "y": 44
-                      }
-                    },
                     {
                       "kind": "GridLayoutItem",
                       "spec": {
@@ -1544,6 +1505,123 @@
                         "width": 24,
                         "height": 5
                       }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "kind": "RowsLayoutRow",
+            "spec": {
+              "collapse": false,
+              "layout": {
+                "kind": "GridLayout",
+                "spec": {
+                  "items": [
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-116"
+                        },
+                        "height": 5,
+                        "width": 6,
+                        "x": 0,
+                        "y": 0
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-117"
+                        },
+                        "height": 5,
+                        "width": 6,
+                        "x": 6,
+                        "y": 0
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-118"
+                        },
+                        "height": 5,
+                        "width": 6,
+                        "x": 12,
+                        "y": 0
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-114"
+                        },
+                        "height": 5,
+                        "width": 6,
+                        "x": 18,
+                        "y": 0
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-104"
+                        },
+                        "height": 10,
+                        "width": 24,
+                        "x": 0,
+                        "y": 5
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-119"
+                        },
+                        "height": 9,
+                        "width": 24,
+                        "x": 0,
+                        "y": 15
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-122"
+                        },
+                        "height": 10,
+                        "width": 24,
+                        "x": 0,
+                        "y": 24
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-121"
+                        },
+                        "height": 11,
+                        "width": 24,
+                        "x": 0,
+                        "y": 34
+                      }
                     },
                     {
                       "kind": "GridLayoutItem",
@@ -1553,7 +1631,7 @@
                           "name": "panel-126"
                         },
                         "x": 0,
-                        "y": 55,
+                        "y": 45,
                         "width": 24,
                         "height": 10
                       }

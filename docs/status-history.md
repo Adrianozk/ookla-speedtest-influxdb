@@ -120,3 +120,5 @@ review. Queries only use data inside that range. For long ranges or frequent
 collections, reduce the displayed range: history is not aggregated to avoid
 hiding short failures. Import historical logs before viewing historical status.
 You do not need to wait for the merge to import the dashboard.
+
+The three status panels are grouped in **Collection status**, collapsed by default. **Recent tests** combines successful measurements and failed attempts (Status/Reason), newest first, with no fabricated speeds or duplicated success records. Full error details remain in the separate table.
