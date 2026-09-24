@@ -1,5 +1,7 @@
 # Status das coletas e importação de logs
 
+[English](status-history.md)
+
 O coletor grava uma série separada `${MEASUREMENT}_status` (padrão:
 `speedtest_status`) no mesmo bucket das velocidades. O dashboard pronto para importar também exibe esses estados. Cada tentativa concluída tem `success=1i` ou `success=0i`,
 `error_kind`, `error_detail` e `server_id` (campo string com o servidor solicitado,
@@ -30,10 +32,10 @@ Execute no servidor que roda o Docker, com Python 3 instalado. Não é necessár
 instalar Python dentro do contêiner. Use logs de **um único coletor** por execução.
 O script aceita a saída com ou sem timestamps adicionais de `docker logs`.
 
-Salve os logs em `speedtest.log`. Você pode usar o arquivo já enviado ou exportar:
+Salve os logs em `speedtest.log` ou exporte-os (ajuste o intervalo do exemplo):
 
 ```bash
-docker logs --since '2026-09-24T08:30:00-03:00' --until '2026-09-24T17:30:00-03:00' ookla-speedtest-influxdb > speedtest.log 2>&1
+docker logs --since '2026-09-24T11:30:00Z' --until '2026-09-24T20:30:00Z' ookla-speedtest-influxdb > speedtest.log 2>&1
 ```
 
 No diretório do repositório, obtenha o host usado pelo contêiner:
@@ -63,8 +65,7 @@ atualizar o coletor. Nenhum token precisa ser colado no terminal. Sem `--contain
 o modo `--write` usa INFLUX_URL, INFLUX_ORG, INFLUX_BUCKET e INFLUX_TOKEN do ambiente
 local (um `.env` não é carregado automaticamente).
 
-O trecho analisado de 24/09/2026 gera **95 pontos: 90 falhas DNS, 1 falha de rede e
-4 sucessos**. Os sucessos marcam o estado anterior e a recuperação, sem reimportar
+Os sucessos marcam o estado anterior e a recuperação, sem reimportar
 as velocidades. Use `--failures-only` se quiser importar apenas erros.
 
 A importação usa o timestamp externo UTC do coletor, não o horário local embutido
@@ -96,7 +97,7 @@ Até a imagem ser publicada, `latest` continua sendo a versão anterior.
 
 ## Importar o dashboard atualizado
 
-Use o arquivo existente `grafana/dashboard.json` desta branch. No Grafana,
+Use o arquivo existente [`grafana/dashboard.json`](../grafana/dashboard.json) desta branch. No Grafana,
 importe o JSON atualizado e selecione a fonte InfluxDB (Flux), Bucket e Host.
 O formato v2 do dashboard original foi preservado. As consultas de lacunas
 requerem Flux 0.179+ (`internal/debug.null`, disponível no InfluxDB 2.7).
