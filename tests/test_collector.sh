@@ -69,3 +69,56 @@ if grep -F 'test-token' "$CAPTURE_FILE" >/dev/null; then
 fi
 
 echo 'collector test passed'
+
+# Successful samples and status must be submitted together.
+grep -F 'speedtest_status,host=cerberus success=1i,error_kind="none"' "$CAPTURE_FILE"
+
+cat >"$TEST_ROOT/bin/speedtest" <<'EOF'
+#!/bin/sh
+case "${FAIL_MODE:-dns}" in
+  dns) echo "Couldn't resolve host name" >&2; exit 1 ;;
+  network) echo 'Network unreachable' >&2; exit 1 ;;
+  timeout) exit 124 ;;
+  parse) echo 'not json'; exit 0 ;;
+esac
+EOF
+for mode in dns network timeout parse; do
+    export FAIL_MODE="$mode"
+    case "$mode" in
+        dns) expected=dns ;;
+        network) expected=network_unreachable ;;
+        timeout) expected=timeout ;;
+        parse) expected=invalid_result ;;
+    esac
+    if "$PROJECT_ROOT/scripts/collector.sh" >"$TEST_ROOT/log" 2>&1; then
+        echo 'A failed test must keep its failure exit status' >&2
+        exit 1
+    fi
+    grep -F "success=0i,error_kind=\"$expected\"" "$CAPTURE_FILE"
+    if grep -F 'download_mbps=' "$CAPTURE_FILE"; then
+        echo 'Failed tests must not contain speed measurements' >&2
+        exit 1
+    fi
+done
+
+# Database failure must be visible and retried without changing point identity.
+cat >"$TEST_ROOT/bin/curl" <<'EOF'
+#!/bin/sh
+while [ "$#" -gt 0 ]; do
+    if [ "$1" = "--data-binary" ]; then
+        shift
+        printf '%s\n' "$1" >>"$CAPTURE_FILE"
+        exit 22
+    fi
+    shift
+done
+EOF
+: >"$CAPTURE_FILE"
+export FAIL_MODE=dns INFLUX_RETRIES=2 INFLUX_RETRY_INTERVAL=1
+if "$PROJECT_ROOT/scripts/collector.sh" >"$TEST_ROOT/log" 2>&1; then
+    exit 1
+fi
+test "$(wc -l <"$CAPTURE_FILE")" -eq 2
+test "$(sort -u "$CAPTURE_FILE" | wc -l)" -eq 1
+grep -F 'event=status_write_failed' "$TEST_ROOT/log"
+echo 'status tests passed'

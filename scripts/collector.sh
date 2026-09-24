@@ -108,6 +108,50 @@ write_to_influx() {
         "$url" >/dev/null
 }
 
+# Status uses a separate measurement; failed tests never become zero Mbps.
+make_status_line() {
+    local success="$1" kind="$2" detail="$3" epoch="$4"
+    jq -nr --arg measurement "${MEASUREMENT}_status" --arg host "$HOST_TAG" \
+        --arg server "${SPEEDTEST_SERVER_ID:-automatic}" \
+        --arg kind "$kind" --arg detail "$detail" --arg epoch "$epoch" \
+        --argjson success "$success" --argjson interval "$SPEEDTEST_INTERVAL" \
+        --argjson fail_interval "$SPEEDTEST_FAIL_INTERVAL" \
+        --argjson timeout "$SPEEDTEST_TIMEOUT" '
+        def esc: gsub("\\\\"; "\\\\\\\\") | gsub(" "; "\\ ") | gsub(","; "\\,") | gsub("="; "\\=");
+        "\($measurement | esc),host=\($host | esc) success=\($success)i,error_kind=\($kind | tojson),error_detail=\($detail | tojson),server_id=\($server | tojson),interval_seconds=\($interval)i,fail_interval_seconds=\($fail_interval)i,timeout_seconds=\($timeout)i \($epoch)"
+    '
+}
+
+classify_error() {
+    case "$1" in
+        124|137) printf timeout ;;
+        *) case "$2" in
+            *"Couldn't resolve host name"*) printf dns ;;
+            *"Network unreachable"*) printf network_unreachable ;;
+            *) printf speedtest_error ;;
+        esac ;;
+    esac
+}
+
+write_with_retries() {
+    local line="$1" attempt
+    attempt=1
+    while [ "$attempt" -le "$INFLUX_RETRIES" ]; do
+        if write_to_influx "$line"; then
+            log INFO influx_write_succeeded "bucket=$INFLUX_BUCKET attempt=$attempt"
+            return 0
+        fi
+
+        log WARN influx_write_failed "bucket=$INFLUX_BUCKET attempt=$attempt"
+        if [ "$attempt" -lt "$INFLUX_RETRIES" ]; then
+            sleep "$INFLUX_RETRY_INTERVAL"
+        fi
+        attempt=$((attempt + 1))
+    done
+
+    return 1
+}
+
 collect_once() {
     tmp_dir="$(mktemp -d)"
     result_file="$tmp_dir/result.json"
@@ -115,15 +159,23 @@ collect_once() {
 
     log INFO speedtest_started "server_id=${SPEEDTEST_SERVER_ID:-automatic}"
 
-    if ! run_speedtest "$result_file" "$error_file"; then
+    if run_speedtest "$result_file" "$error_file"; then
+        :
+    else
+        exit_code=$?
         detail="$(tr '\n' ' ' <"$error_file" | cut -c1-500)"
         log ERROR speedtest_failed "detail=${detail:-unknown}"
+        status_epoch="$(date -u -d "$timestamp" +%s)"
+        status_line="$(make_status_line 0 "$(classify_error "$exit_code" "$detail")" "${detail:-unknown}" "$status_epoch")"
+        write_with_retries "$status_line" || log ERROR status_write_failed
         rm -rf "$tmp_dir"
         return 1
     fi
 
     if ! line="$(make_line_protocol <"$result_file")"; then
         log ERROR speedtest_parse_failed "detail=invalid_or_incomplete_json"
+        status_line="$(make_status_line 0 invalid_result invalid_or_incomplete_json "$(date -u -d "$timestamp" +%s)")"
+        write_with_retries "$status_line" || log ERROR status_write_failed
         rm -rf "$tmp_dir"
         return 1
     fi
@@ -135,20 +187,12 @@ collect_once() {
     ' "$result_file")"
     log INFO speedtest_succeeded "$summary"
 
-    attempt=1
-    while [ "$attempt" -le "$INFLUX_RETRIES" ]; do
-        if write_to_influx "$line"; then
-            log INFO influx_write_succeeded "bucket=$INFLUX_BUCKET attempt=$attempt"
-            rm -rf "$tmp_dir"
-            return 0
-        fi
-
-        log WARN influx_write_failed "bucket=$INFLUX_BUCKET attempt=$attempt"
-        if [ "$attempt" -lt "$INFLUX_RETRIES" ]; then
-            sleep "$INFLUX_RETRY_INTERVAL"
-        fi
-        attempt=$((attempt + 1))
-    done
+    status_line="$(make_status_line 1 none '' "$(date -u -d "$timestamp" +%s)")"
+    if write_with_retries "$line
+$status_line"; then
+        rm -rf "$tmp_dir"
+        return 0
+    fi
 
     rm -rf "$tmp_dir"
     return 1
