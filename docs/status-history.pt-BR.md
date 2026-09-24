@@ -1,8 +1,7 @@
 # Status das coletas e importação de logs
 
 O coletor grava uma série separada `${MEASUREMENT}_status` (padrão:
-`speedtest_status`) no mesmo bucket das velocidades. O Grafana existente não é
-alterado. Cada tentativa concluída tem `success=1i` ou `success=0i`,
+`speedtest_status`) no mesmo bucket das velocidades. O dashboard pronto para importar também exibe esses estados. Cada tentativa concluída tem `success=1i` ou `success=0i`,
 `error_kind`, `error_detail` e `server_id` (campo string com o servidor solicitado,
 ou `automatic`). A tag é `host`, exatamente o `HOST_TAG` da instalação.
 O timestamp é o horário UTC de conclusão da tentativa, com precisão de segundos.
@@ -94,3 +93,28 @@ docker compose up -d speedtest-influxdb
 ```
 
 Até a imagem ser publicada, `latest` continua sendo a versão anterior.
+
+## Importar o dashboard atualizado
+
+Use o arquivo existente `grafana/dashboard.json` desta branch. No Grafana,
+importe o JSON atualizado e selecione a fonte InfluxDB (Flux), Bucket e Host.
+O formato v2 do dashboard original foi preservado. As consultas de lacunas
+requerem Flux 0.179+ (`internal/debug.null`, disponível no InfluxDB 2.7).
+
+Configure **Max data age (seconds)**: `1200` para testes a cada 15 minutos,
+ou mantenha `4500` para testes a cada hora. É um limite manual que inclui margem
+para execução e retries; não é inferido dos logs históricos.
+
+- Latest attempt mostra sucesso, falha ou dado desatualizado; sem status é desconhecido.
+- Age of last successful test mostra a idade da última medição no período.
+- Os quatro cartões antigos exibem apenas medições recentes e são identificados como último sucesso.
+- Collection attempts mostra pontos verdes/vermelhos, sem interpolar períodos desconhecidos.
+- Failed attempts — details lista até 500 falhas, incluindo o motivo.
+- Os gráficos preservam os pontos individuais e interrompem a linha nas falhas
+  registradas ou lacunas maiores que o limite, sem inventar velocidades zero.
+
+A idade é calculada em relação ao fim do período selecionado, permitindo revisar
+incidentes antigos. As consultas usam apenas dados dentro desse período. Para
+períodos muito longos/coletas frequentes, reduza o intervalo exibido: os históricos
+não agregam pontos para evitar esconder falhas curtas. Importe os logs antigos
+antes de visualizar os painéis de status. Não é necessário esperar o merge.

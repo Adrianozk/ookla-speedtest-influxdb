@@ -32,7 +32,7 @@
       }
     ],
     "cursorSync": "Off",
-    "description": "Dashboard for network performance results collected by Adrianozk/ookla-speedtest-influxdb, including per-server analysis.",
+    "description": "Dashboard for network performance results collected by Adrianozk/ookla-speedtest-influxdb, including per-server analysis. Includes collection status, historical failures, freshness and explicit gaps. Requires Flux 0.179+ for typed nulls.",
     "editable": true,
     "elements": {
       "panel-104": {
@@ -53,7 +53,7 @@
                       "group": "influxdb",
                       "kind": "DataQuery",
                       "spec": {
-                        "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"speedtest\")\n  |> filter(fn: (r) => r._field == \"download_mbps\" or r._field == \"upload_mbps\")\n  |> filter(fn: (r) => r.host == \"${host}\")\n  |> group(columns: [\"_field\"])\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)"
+                        "query": "import \"internal/debug\"\n\nvalues = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"${measurement}\" and r.host == \"${host}\")\n  |> filter(fn: (r) => r._field == \"download_mbps\" or r._field == \"upload_mbps\")\n  |> keep(columns: [\"_time\", \"_field\", \"_value\"])\n  |> group(columns: [\"_field\"])\n  |> sort(columns: [\"_time\"])\n\ngaps = values\n  |> elapsed(unit: 1s)\n  |> filter(fn: (r) => r.elapsed > int(v: \"${max_age_seconds}\"))\n  |> map(fn: (r) => ({_time: time(v: int(v: r._time) - 1000000), _field: r._field, _value: debug.null(type: \"float\")}))\n\nfailed = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"${measurement}_status\" and r.host == \"${host}\")\n  |> filter(fn: (r) => r._field == \"success\")\n  |> filter(fn: (r) => r._value == 0)\n\nfailed0 = failed |> map(fn: (r) => ({_time: r._time, _field: \"download_mbps\", _value: debug.null(type: \"float\")}))\n\nfailed1 = failed |> map(fn: (r) => ({_time: r._time, _field: \"upload_mbps\", _value: debug.null(type: \"float\")}))\n\nunion(tables: [values, gaps, failed0, failed1])\n  |> group(columns: [\"_field\"])\n  |> sort(columns: [\"_time\"])"
                       },
                       "version": "v0"
                     },
@@ -65,7 +65,7 @@
               "transformations": []
             }
           },
-          "description": "Download and upload throughput over the selected time range.",
+          "description": "Download and upload throughput over the selected time range. Raw samples; explicit failures and gaps longer than Max data age break the line. No zero speeds are invented. Prefer a shorter time range for high-frequency collectors.",
           "id": 104,
           "links": [],
           "title": "Throughput history",
@@ -209,7 +209,7 @@
                       "group": "influxdb",
                       "kind": "DataQuery",
                       "spec": {
-                        "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"speedtest\")\n  |> filter(fn: (r) => r._field == \"packet_loss_pct\")\n  |> filter(fn: (r) => r.host == \"${host}\")\n  |> last()\n  |> group()\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: 1)"
+                        "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"${measurement}\")\n  |> filter(fn: (r) => r._field == \"packet_loss_pct\")\n  |> filter(fn: (r) => r.host == \"${host}\")\n  |> last()\n  |> group()\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: 1)\n  |> filter(fn: (r) => int(v: v.timeRangeStop) - int(v: r._time) <= int(v: \"${max_age_seconds}\") * 1000000000)"
                       },
                       "version": "v0"
                     },
@@ -221,10 +221,10 @@
               "transformations": []
             }
           },
-          "description": "Packet loss from the most recent test in the selected time range.",
+          "description": "Packet loss from the most recent test in the selected time range. Hidden when older than Max data age relative to the end of the selected range. Check Latest attempt for failures after this measurement.",
           "id": 114,
           "links": [],
-          "title": "Latest packet loss",
+          "title": "Last successful packet loss",
           "vizConfig": {
             "group": "stat",
             "kind": "VizConfig",
@@ -253,7 +253,7 @@
                   "color": {
                     "mode": "thresholds"
                   },
-                  "noValue": "No data"
+                  "noValue": "Stale / no data"
                 },
                 "overrides": []
               },
@@ -298,7 +298,7 @@
                       "group": "influxdb",
                       "kind": "DataQuery",
                       "spec": {
-                        "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"speedtest\")\n  |> filter(fn: (r) => r._field == \"download_mbps\")\n  |> filter(fn: (r) => r.host == \"${host}\")\n  |> last()\n  |> group()\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: 1)"
+                        "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"${measurement}\")\n  |> filter(fn: (r) => r._field == \"download_mbps\")\n  |> filter(fn: (r) => r.host == \"${host}\")\n  |> last()\n  |> group()\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: 1)\n  |> filter(fn: (r) => int(v: v.timeRangeStop) - int(v: r._time) <= int(v: \"${max_age_seconds}\") * 1000000000)"
                       },
                       "version": "v0"
                     },
@@ -310,10 +310,10 @@
               "transformations": []
             }
           },
-          "description": "Download speed from the most recent test in the selected time range.",
+          "description": "Download speed from the most recent test in the selected time range. Hidden when older than Max data age relative to the end of the selected range. Check Latest attempt for failures after this measurement.",
           "id": 116,
           "links": [],
-          "title": "Latest download",
+          "title": "Last successful download",
           "vizConfig": {
             "group": "stat",
             "kind": "VizConfig",
@@ -335,7 +335,7 @@
                     "fixedColor": "blue",
                     "mode": "fixed"
                   },
-                  "noValue": "No data"
+                  "noValue": "Stale / no data"
                 },
                 "overrides": []
               },
@@ -380,7 +380,7 @@
                       "group": "influxdb",
                       "kind": "DataQuery",
                       "spec": {
-                        "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"speedtest\")\n  |> filter(fn: (r) => r._field == \"upload_mbps\")\n  |> filter(fn: (r) => r.host == \"${host}\")\n  |> last()\n  |> group()\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: 1)"
+                        "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"${measurement}\")\n  |> filter(fn: (r) => r._field == \"upload_mbps\")\n  |> filter(fn: (r) => r.host == \"${host}\")\n  |> last()\n  |> group()\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: 1)\n  |> filter(fn: (r) => int(v: v.timeRangeStop) - int(v: r._time) <= int(v: \"${max_age_seconds}\") * 1000000000)"
                       },
                       "version": "v0"
                     },
@@ -392,10 +392,10 @@
               "transformations": []
             }
           },
-          "description": "Upload speed from the most recent test in the selected time range.",
+          "description": "Upload speed from the most recent test in the selected time range. Hidden when older than Max data age relative to the end of the selected range. Check Latest attempt for failures after this measurement.",
           "id": 117,
           "links": [],
-          "title": "Latest upload",
+          "title": "Last successful upload",
           "vizConfig": {
             "group": "stat",
             "kind": "VizConfig",
@@ -417,7 +417,7 @@
                     "fixedColor": "yellow",
                     "mode": "fixed"
                   },
-                  "noValue": "No data"
+                  "noValue": "Stale / no data"
                 },
                 "overrides": []
               },
@@ -462,7 +462,7 @@
                       "group": "influxdb",
                       "kind": "DataQuery",
                       "spec": {
-                        "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"speedtest\")\n  |> filter(fn: (r) => r._field == \"latency_ms\")\n  |> filter(fn: (r) => r.host == \"${host}\")\n  |> last()\n  |> group()\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: 1)"
+                        "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"${measurement}\")\n  |> filter(fn: (r) => r._field == \"latency_ms\")\n  |> filter(fn: (r) => r.host == \"${host}\")\n  |> last()\n  |> group()\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: 1)\n  |> filter(fn: (r) => int(v: v.timeRangeStop) - int(v: r._time) <= int(v: \"${max_age_seconds}\") * 1000000000)"
                       },
                       "version": "v0"
                     },
@@ -474,10 +474,10 @@
               "transformations": []
             }
           },
-          "description": "Idle latency from the most recent test in the selected time range.",
+          "description": "Idle latency from the most recent test in the selected time range. Hidden when older than Max data age relative to the end of the selected range. Check Latest attempt for failures after this measurement.",
           "id": 118,
           "links": [],
-          "title": "Latest latency",
+          "title": "Last successful latency",
           "vizConfig": {
             "group": "stat",
             "kind": "VizConfig",
@@ -506,7 +506,7 @@
                   "color": {
                     "mode": "thresholds"
                   },
-                  "noValue": "No data"
+                  "noValue": "Stale / no data"
                 },
                 "overrides": []
               },
@@ -550,7 +550,7 @@
                       "group": "influxdb",
                       "kind": "DataQuery",
                       "spec": {
-                        "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"speedtest\")\n  |> filter(fn: (r) => r._field == \"latency_ms\" or r._field == \"jitter_ms\" or r._field == \"packet_loss_pct\")\n  |> filter(fn: (r) => r.host == \"${host}\")\n  |> group(columns: [\"_field\"])\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)"
+                        "query": "import \"internal/debug\"\n\nvalues = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"${measurement}\" and r.host == \"${host}\")\n  |> filter(fn: (r) => r._field == \"latency_ms\" or r._field == \"jitter_ms\" or r._field == \"packet_loss_pct\")\n  |> keep(columns: [\"_time\", \"_field\", \"_value\"])\n  |> group(columns: [\"_field\"])\n  |> sort(columns: [\"_time\"])\n\ngaps = values\n  |> elapsed(unit: 1s)\n  |> filter(fn: (r) => r.elapsed > int(v: \"${max_age_seconds}\"))\n  |> map(fn: (r) => ({_time: time(v: int(v: r._time) - 1000000), _field: r._field, _value: debug.null(type: \"float\")}))\n\nfailed = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"${measurement}_status\" and r.host == \"${host}\")\n  |> filter(fn: (r) => r._field == \"success\")\n  |> filter(fn: (r) => r._value == 0)\n\nfailed0 = failed |> map(fn: (r) => ({_time: r._time, _field: \"latency_ms\", _value: debug.null(type: \"float\")}))\n\nfailed1 = failed |> map(fn: (r) => ({_time: r._time, _field: \"jitter_ms\", _value: debug.null(type: \"float\")}))\n\nfailed2 = failed |> map(fn: (r) => ({_time: r._time, _field: \"packet_loss_pct\", _value: debug.null(type: \"float\")}))\n\nunion(tables: [values, gaps, failed0, failed1, failed2])\n  |> group(columns: [\"_field\"])\n  |> sort(columns: [\"_time\"])"
                       },
                       "version": "v0"
                     },
@@ -562,7 +562,7 @@
               "transformations": []
             }
           },
-          "description": "Latency, jitter, and packet loss over the selected time range. Packet loss uses the right axis.",
+          "description": "Latency, jitter, and packet loss over the selected time range. Packet loss uses the right axis. Raw samples; explicit failures and gaps longer than Max data age break the line. No zero speeds are invented. Prefer a shorter time range for high-frequency collectors.",
           "id": 119,
           "links": [],
           "title": "Connection quality",
@@ -737,7 +737,7 @@
                       "group": "influxdb",
                       "kind": "DataQuery",
                       "spec": {
-                        "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"speedtest\")\n  |> filter(fn: (r) => r.host == \"${host}\")\n  |> filter(fn: (r) => r._field == \"download_mbps\" or r._field == \"upload_mbps\" or r._field == \"latency_ms\" or r._field == \"jitter_ms\" or r._field == \"packet_loss_pct\")\n  |> group()\n  |> pivot(rowKey: [\"_time\", \"server_id\", \"server_name\", \"server_location\", \"server_country\", \"isp\", \"interface\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> keep(columns: [\"_time\", \"download_mbps\", \"upload_mbps\", \"latency_ms\", \"jitter_ms\", \"packet_loss_pct\", \"server_name\", \"server_location\", \"server_country\", \"server_id\", \"isp\", \"interface\"])\n  |> rename(columns: {_time: \"Time\", download_mbps: \"Download\", upload_mbps: \"Upload\", latency_ms: \"Latency\", jitter_ms: \"Jitter\", packet_loss_pct: \"Packet loss\", server_name: \"Server\", server_location: \"Location\", server_country: \"Country\", server_id: \"Server ID\", isp: \"ISP\", interface: \"Interface\"})\n  |> sort(columns: [\"Time\"], desc: true)\n  |> limit(n: 100)"
+                        "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"${measurement}\")\n  |> filter(fn: (r) => r.host == \"${host}\")\n  |> filter(fn: (r) => r._field == \"download_mbps\" or r._field == \"upload_mbps\" or r._field == \"latency_ms\" or r._field == \"jitter_ms\" or r._field == \"packet_loss_pct\")\n  |> group()\n  |> pivot(rowKey: [\"_time\", \"server_id\", \"server_name\", \"server_location\", \"server_country\", \"isp\", \"interface\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> keep(columns: [\"_time\", \"download_mbps\", \"upload_mbps\", \"latency_ms\", \"jitter_ms\", \"packet_loss_pct\", \"server_name\", \"server_location\", \"server_country\", \"server_id\", \"isp\", \"interface\"])\n  |> rename(columns: {_time: \"Time\", download_mbps: \"Download\", upload_mbps: \"Upload\", latency_ms: \"Latency\", jitter_ms: \"Jitter\", packet_loss_pct: \"Packet loss\", server_name: \"Server\", server_location: \"Location\", server_country: \"Country\", server_id: \"Server ID\", isp: \"ISP\", interface: \"Interface\"})\n  |> sort(columns: [\"Time\"], desc: true)\n  |> limit(n: 100)"
                       },
                       "version": "v0"
                     },
@@ -896,7 +896,7 @@
                       "group": "influxdb",
                       "kind": "DataQuery",
                       "spec": {
-                        "query": "base = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"speedtest\")\n  |> filter(fn: (r) => r.host == \"${host}\")\n  |> filter(fn: (r) => r._field == \"download_mbps\" or r._field == \"upload_mbps\" or r._field == \"latency_ms\")\n  |> group(columns: [\"server_id\", \"server_name\", \"server_location\", \"server_country\", \"_field\"])\n\nminimum = base\n  |> min()\n  |> map(fn: (r) => ({r with metric: r._field + \"_min\"}))\n\naverage = base\n  |> mean()\n  |> map(fn: (r) => ({r with metric: r._field + \"_avg\"}))\n\nmaximum = base\n  |> max()\n  |> map(fn: (r) => ({r with metric: r._field + \"_max\"}))\n\ntests = base\n  |> filter(fn: (r) => r._field == \"download_mbps\")\n  |> count(column: \"_value\")\n  |> map(fn: (r) => ({r with _value: float(v: r._value), metric: \"tests\"}))\n\nunion(tables: [minimum, average, maximum, tests])\n  |> group()\n  |> pivot(rowKey: [\"server_id\", \"server_name\", \"server_location\", \"server_country\"], columnKey: [\"metric\"], valueColumn: \"_value\")\n  |> keep(columns: [\"server_name\", \"server_id\", \"server_location\", \"server_country\", \"tests\", \"download_mbps_min\", \"download_mbps_avg\", \"download_mbps_max\", \"upload_mbps_min\", \"upload_mbps_avg\", \"upload_mbps_max\", \"latency_ms_min\", \"latency_ms_avg\", \"latency_ms_max\"])\n  |> rename(columns: {server_name: \"Server\", server_id: \"Server ID\", server_location: \"Location\", server_country: \"Country\", tests: \"Tests\", download_mbps_min: \"Download min\", download_mbps_avg: \"Download avg\", download_mbps_max: \"Download max\", upload_mbps_min: \"Upload min\", upload_mbps_avg: \"Upload avg\", upload_mbps_max: \"Upload max\", latency_ms_min: \"Latency min\", latency_ms_avg: \"Latency avg\", latency_ms_max: \"Latency max\"})\n  |> sort(columns: [\"Server\"])"
+                        "query": "base = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"${measurement}\")\n  |> filter(fn: (r) => r.host == \"${host}\")\n  |> filter(fn: (r) => r._field == \"download_mbps\" or r._field == \"upload_mbps\" or r._field == \"latency_ms\")\n  |> group(columns: [\"server_id\", \"server_name\", \"server_location\", \"server_country\", \"_field\"])\n\nminimum = base\n  |> min()\n  |> map(fn: (r) => ({r with metric: r._field + \"_min\"}))\n\naverage = base\n  |> mean()\n  |> map(fn: (r) => ({r with metric: r._field + \"_avg\"}))\n\nmaximum = base\n  |> max()\n  |> map(fn: (r) => ({r with metric: r._field + \"_max\"}))\n\ntests = base\n  |> filter(fn: (r) => r._field == \"download_mbps\")\n  |> count(column: \"_value\")\n  |> map(fn: (r) => ({r with _value: float(v: r._value), metric: \"tests\"}))\n\nunion(tables: [minimum, average, maximum, tests])\n  |> group()\n  |> pivot(rowKey: [\"server_id\", \"server_name\", \"server_location\", \"server_country\"], columnKey: [\"metric\"], valueColumn: \"_value\")\n  |> keep(columns: [\"server_name\", \"server_id\", \"server_location\", \"server_country\", \"tests\", \"download_mbps_min\", \"download_mbps_avg\", \"download_mbps_max\", \"upload_mbps_min\", \"upload_mbps_avg\", \"upload_mbps_max\", \"latency_ms_min\", \"latency_ms_avg\", \"latency_ms_max\"])\n  |> rename(columns: {server_name: \"Server\", server_id: \"Server ID\", server_location: \"Location\", server_country: \"Country\", tests: \"Tests\", download_mbps_min: \"Download min\", download_mbps_avg: \"Download avg\", download_mbps_max: \"Download max\", upload_mbps_min: \"Upload min\", upload_mbps_avg: \"Upload avg\", upload_mbps_max: \"Upload max\", latency_ms_min: \"Latency min\", latency_ms_avg: \"Latency avg\", latency_ms_max: \"Latency max\"})\n  |> sort(columns: [\"Server\"])"
                       },
                       "version": "v0"
                     },
@@ -1016,6 +1016,378 @@
             "version": "13.2.0"
           }
         }
+      },
+      "panel-123": {
+        "kind": "Panel",
+        "spec": {
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "hidden": false,
+                    "query": {
+                      "datasource": {
+                        "name": "${datasource}"
+                      },
+                      "group": "influxdb",
+                      "kind": "DataQuery",
+                      "spec": {
+                        "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"${measurement}_status\" and r.host == \"${host}\")\n  |> filter(fn: (r) => r._field == \"success\")\n  |> group()\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: 1)\n  |> map(fn: (r) => ({r with _value: if float(v: int(v: v.timeRangeStop) - int(v: r._time)) / 1000000000.0 > float(v: \"${max_age_seconds}\") then 2 else r._value}))"
+                      },
+                      "version": "v0"
+                    },
+                    "refId": "A"
+                  }
+                }
+              ],
+              "queryOptions": {},
+              "transformations": []
+            }
+          },
+          "description": "Latest recorded attempt in the selected range: success, failure, or stale. No data means unknown; it is not proof of an outage.",
+          "id": 123,
+          "links": [],
+          "title": "Latest attempt",
+          "vizConfig": {
+            "group": "stat",
+            "kind": "VizConfig",
+            "spec": {
+              "fieldConfig": {
+                "defaults": {
+                  "noValue": "Unknown / no data",
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "mappings": [
+                    {
+                      "type": "value",
+                      "options": {
+                        "0": {
+                          "text": "Failed",
+                          "color": "red"
+                        },
+                        "1": {
+                          "text": "Succeeded",
+                          "color": "green"
+                        },
+                        "2": {
+                          "text": "Stale / unknown",
+                          "color": "gray"
+                        }
+                      }
+                    }
+                  ]
+                },
+                "overrides": []
+              },
+              "options": {
+                "colorMode": "background",
+                "graphMode": "none",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                  "calcs": [
+                    "last"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "showPercentChange": false,
+                "text": {},
+                "textMode": "auto",
+                "wideLayout": true
+              }
+            },
+            "version": "13.2.0"
+          }
+        }
+      },
+      "panel-124": {
+        "kind": "Panel",
+        "spec": {
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "hidden": false,
+                    "query": {
+                      "datasource": {
+                        "name": "${datasource}"
+                      },
+                      "group": "influxdb",
+                      "kind": "DataQuery",
+                      "spec": {
+                        "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"${measurement}\" and r.host == \"${host}\")\n  |> filter(fn: (r) => r._field == \"download_mbps\")\n  |> group()\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: 1)\n  |> map(fn: (r) => ({r with _value: float(v: int(v: v.timeRangeStop) - int(v: r._time)) / 1000000000.0}))"
+                      },
+                      "version": "v0"
+                    },
+                    "refId": "A"
+                  }
+                }
+              ],
+              "queryOptions": {},
+              "transformations": []
+            }
+          },
+          "description": "Age relative to the end of the selected range (not the current clock when viewing history). No result outside the selected range is assumed.",
+          "id": 124,
+          "links": [],
+          "title": "Age of last successful test",
+          "vizConfig": {
+            "group": "stat",
+            "kind": "VizConfig",
+            "spec": {
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "s",
+                  "decimals": 0,
+                  "noValue": "No successful test",
+                  "color": {
+                    "mode": "fixed",
+                    "fixedColor": "text"
+                  }
+                },
+                "overrides": []
+              },
+              "options": {
+                "colorMode": "value",
+                "graphMode": "none",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                  "calcs": [
+                    "last"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "showPercentChange": false,
+                "text": {},
+                "textMode": "auto",
+                "wideLayout": true
+              }
+            },
+            "version": "13.2.0"
+          }
+        }
+      },
+      "panel-125": {
+        "kind": "Panel",
+        "spec": {
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "hidden": false,
+                    "query": {
+                      "datasource": {
+                        "name": "${datasource}"
+                      },
+                      "group": "influxdb",
+                      "kind": "DataQuery",
+                      "spec": {
+                        "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"${measurement}_status\" and r.host == \"${host}\")\n  |> filter(fn: (r) => r._field == \"success\")\n  |> keep(columns: [\"_time\", \"_value\"])\n  |> group()\n  |> sort(columns: [\"_time\"])"
+                      },
+                      "version": "v0"
+                    },
+                    "refId": "A"
+                  }
+                }
+              ],
+              "queryOptions": {},
+              "transformations": []
+            }
+          },
+          "description": "Each dot is a recorded attempt: green success, red failure. Empty periods are unknown, not success or failure. No interpolation or availability percentage.",
+          "id": 125,
+          "links": [],
+          "title": "Collection attempts",
+          "vizConfig": {
+            "group": "timeseries",
+            "kind": "VizConfig",
+            "spec": {
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "custom": {
+                    "axisBorderShow": false,
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "barWidthFactor": 0.6,
+                    "drawStyle": "points",
+                    "fillOpacity": 0,
+                    "gradientMode": "opacity",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "insertNulls": false,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 0,
+                    "pointSize": 6,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "always",
+                    "showValues": false,
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  },
+                  "decimals": 0,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "red",
+                        "value": null
+                      },
+                      {
+                        "color": "green",
+                        "value": 1
+                      }
+                    ]
+                  },
+                  "unit": "none",
+                  "min": 0,
+                  "max": 1,
+                  "mappings": [
+                    {
+                      "type": "value",
+                      "options": {
+                        "0": {
+                          "text": "Failed"
+                        },
+                        "1": {
+                          "text": "Succeeded"
+                        }
+                      }
+                    }
+                  ]
+                },
+                "overrides": []
+              },
+              "options": {
+                "legend": {
+                  "calcs": [
+                    "mean",
+                    "max",
+                    "min"
+                  ],
+                  "displayMode": "table",
+                  "placement": "bottom",
+                  "showLegend": false
+                },
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "multi",
+                  "sort": "none"
+                }
+              }
+            },
+            "version": "13.2.0"
+          }
+        }
+      },
+      "panel-126": {
+        "kind": "Panel",
+        "spec": {
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "hidden": false,
+                    "query": {
+                      "datasource": {
+                        "name": "${datasource}"
+                      },
+                      "group": "influxdb",
+                      "kind": "DataQuery",
+                      "spec": {
+                        "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"${measurement}_status\" and r.host == \"${host}\")\n  |> filter(fn: (r) => r._field == \"success\" or r._field == \"error_kind\" or r._field == \"error_detail\" or r._field == \"server_id\")\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> filter(fn: (r) => r.success == 0)\n  |> group()\n  |> keep(columns: [\"_time\", \"error_kind\", \"error_detail\", \"server_id\"])\n  |> rename(columns: {_time: \"Time\", error_kind: \"Reason\", error_detail: \"Details\", server_id: \"Requested server\"})\n  |> sort(columns: [\"Time\"], desc: true)\n  |> limit(n: 500)"
+                      },
+                      "version": "v0"
+                    },
+                    "refId": "A"
+                  }
+                }
+              ],
+              "queryOptions": {},
+              "transformations": []
+            }
+          },
+          "description": "Up to 500 most recent failed attempts in the selected range. Includes imported historical errors.",
+          "id": 126,
+          "links": [],
+          "title": "Failed attempts \u2014 details",
+          "vizConfig": {
+            "group": "table",
+            "kind": "VizConfig",
+            "spec": {
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "custom": {
+                    "align": "auto",
+                    "cellOptions": {
+                      "type": "auto"
+                    },
+                    "filterable": true,
+                    "inspect": false
+                  },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": 0
+                      }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "options": {
+                "cellHeight": "sm",
+                "showHeader": true,
+                "sortBy": [
+                  {
+                    "desc": true,
+                    "displayName": "Time"
+                  }
+                ]
+              }
+            },
+            "version": "13.2.0"
+          }
+        }
       }
     },
     "layout": {
@@ -1040,7 +1412,7 @@
                         "height": 5,
                         "width": 6,
                         "x": 0,
-                        "y": 0
+                        "y": 10
                       }
                     },
                     {
@@ -1053,7 +1425,7 @@
                         "height": 5,
                         "width": 6,
                         "x": 6,
-                        "y": 0
+                        "y": 10
                       }
                     },
                     {
@@ -1066,7 +1438,7 @@
                         "height": 5,
                         "width": 6,
                         "x": 12,
-                        "y": 0
+                        "y": 10
                       }
                     },
                     {
@@ -1079,7 +1451,7 @@
                         "height": 5,
                         "width": 6,
                         "x": 18,
-                        "y": 0
+                        "y": 10
                       }
                     },
                     {
@@ -1092,7 +1464,7 @@
                         "height": 10,
                         "width": 24,
                         "x": 0,
-                        "y": 5
+                        "y": 15
                       }
                     },
                     {
@@ -1105,7 +1477,7 @@
                         "height": 9,
                         "width": 24,
                         "x": 0,
-                        "y": 15
+                        "y": 25
                       }
                     },
                     {
@@ -1118,7 +1490,7 @@
                         "height": 10,
                         "width": 24,
                         "x": 0,
-                        "y": 24
+                        "y": 34
                       }
                     },
                     {
@@ -1131,7 +1503,59 @@
                         "height": 11,
                         "width": 24,
                         "x": 0,
-                        "y": 34
+                        "y": 44
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-123"
+                        },
+                        "x": 0,
+                        "y": 0,
+                        "width": 12,
+                        "height": 5
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-124"
+                        },
+                        "x": 12,
+                        "y": 0,
+                        "width": 12,
+                        "height": 5
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-125"
+                        },
+                        "x": 0,
+                        "y": 5,
+                        "width": 24,
+                        "height": 5
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-126"
+                        },
+                        "x": 0,
+                        "y": 55,
+                        "width": 24,
+                        "height": 10
                       }
                     }
                   ]
@@ -1185,7 +1609,7 @@
       "timezone": "browser",
       "to": "now"
     },
-    "title": "Ookla Speedtest — InfluxDB",
+    "title": "Ookla Speedtest \u2014 InfluxDB",
     "variables": [
       {
         "kind": "DatasourceVariable",
@@ -1236,6 +1660,36 @@
           "hide": "dontHide",
           "skipUrlSync": false,
           "description": "Value configured in HOST_TAG"
+        }
+      },
+      {
+        "kind": "TextVariable",
+        "spec": {
+          "name": "measurement",
+          "current": {
+            "text": "speedtest",
+            "value": "speedtest"
+          },
+          "query": "speedtest",
+          "label": "Measurement",
+          "hide": "dontHide",
+          "skipUrlSync": false,
+          "description": "Base MEASUREMENT; _status is added automatically."
+        }
+      },
+      {
+        "kind": "TextVariable",
+        "spec": {
+          "name": "max_age_seconds",
+          "current": {
+            "text": "4500",
+            "value": "4500"
+          },
+          "query": "4500",
+          "label": "Max data age (seconds)",
+          "hide": "dontHide",
+          "skipUrlSync": false,
+          "description": "Maximum expected gap including execution/retries. Default 4500 for hourly tests; use 1200 for 15-minute tests. Also controls line breaks and stale cards; applies to the selected range end."
         }
       }
     ]
